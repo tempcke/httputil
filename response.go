@@ -3,7 +3,6 @@ package httputil
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 )
@@ -23,7 +22,7 @@ func DecodeResponse(r *http.Response, out any) ([]byte, error) {
 
 	if err := json.NewDecoder(tr).Decode(out); err != nil {
 		if buf.Len() == 0 {
-			return nil, errors.New("decode empty body")
+			return nil, nil
 		}
 		r.Body = io.NopCloser(&buf)
 		return buf.Bytes(), err

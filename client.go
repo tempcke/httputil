@@ -27,6 +27,7 @@ type (
 		ReqHeaders
 		HttpClient   httpClient // *http.Client
 		Host         string
+		PathPrefix   string
 		log          sLogger
 		RateLimiter  *RateLimiter
 		RetriesOn429 int
@@ -44,15 +45,25 @@ func NewClient() Client {
 		With429Retry(Default429Retry)
 }
 func (c Client) WithHost(v string) Client              { c.Host = v; return c }
+func (c Client) WithPathPrefix(v string) Client        { c.PathPrefix = v; return c }
 func (c Client) WithLogger(v LevelLogger) Client       { c.log = newLogger(v); return c }
 func (c Client) WithHttpClient(v httpClient) Client    { c.HttpClient = v; return c }
 func (c Client) WithRateLimiter(v *RateLimiter) Client { c.RateLimiter = v; return c }
 func (c Client) With429Retry(v int) Client             { c.RetriesOn429 = v; return c }
 func (c Client) WithHeader(h http.Header) Client {
+	c2 := c.Clone()
 	for k, v := range h {
-		c.AddHeader(k, v...)
+		c2.SetHeader(k, v...)
 	}
-	return c
+	return c2
+}
+func (c Client) WithSetHeader(k string, v ...string) Client {
+	return c.WithHeader(http.Header{k: v})
+}
+func (c Client) Clone() Client {
+	c2 := c
+	c2.ReqHeaders = c.ReqHeaders.Clone()
+	return c2
 }
 
 func (c Client) DoReq(ctx context.Context, method string, r Request, out, errRes any) (*http.Response, error) {
@@ -61,7 +72,7 @@ func (c Client) DoReq(ctx context.Context, method string, r Request, out, errRes
 	}
 
 	var (
-		uri    = r.Path().WithBaseURL(c.Host).String()
+		uri    = r.Path().WithBaseURL(c.Host).WithPrefix(c.PathPrefix).String()
 		header = r.Header()
 		body   = r
 	)
@@ -95,7 +106,7 @@ func (c Client) Request(ctx context.Context, method, uri string, headers http.He
 			reqBody = bytes.NewReader(bodyBytes)
 		}
 	}
-	uri = uriWithBase(uri, c.Host)
+	uri = uriWithBase(uri, c.Host, c.PathPrefix)
 	req, err := http.NewRequestWithContext(ctx, method, uri, reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", "http.NewRequest failed", err)

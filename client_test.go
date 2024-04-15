@@ -57,9 +57,7 @@ func TestClient_Do(t *testing.T) {
 		client := httputil.NewClient().
 			WithLogger(errLogger).WithHost(server.URL)
 
-		fullPath := httputil.NewPath(uri).WithBaseURL(server.URL).String()
-
-		req, err := client.Request(ctx, method, fullPath, reqHeader, in)
+		req, err := client.Request(ctx, method, uri, reqHeader, in)
 		require.NoError(t, err)
 		res, err := client.Do(req)
 		require.NoError(t, err)
@@ -92,8 +90,33 @@ func TestClient_Do(t *testing.T) {
 			WithHeader(http.Header{bazKey: []string{bazVal}})
 		client.AddHeader(barKey, barVal)
 
-		fullPath := httputil.NewPath(uri).WithBaseURL(server.URL).String()
-		req, err := client.Request(ctx, method, fullPath, reqHeader, in)
+		req, err := client.Request(ctx, method, uri, reqHeader, in)
+		require.NoError(t, err)
+		res, err := client.Do(req)
+		require.NoError(t, err)
+		assert.NotNil(t, res)
+		assert.True(t, called)
+	})
+	t.Run("WithPrefix", func(t *testing.T) {
+		var (
+			called     = false
+			method     = http.MethodPost
+			uri        = "/foo/" + uuid.NewString()
+			in         = ReqModel{Name: "Robert"}
+			apiVersion = "v1"
+			expectPath = "/v1" + uri
+			reqHeader  http.Header
+		)
+		server := fakeServer(t, func(w http.ResponseWriter, r *http.Request) {
+			called = true
+			assert.Equal(t, method, r.Method)
+			assert.Equal(t, expectPath, r.URL.Path)
+			w.WriteHeader(http.StatusOK)
+		})
+		client := httputil.NewClient().
+			WithLogger(errLogger).WithHost(server.URL).WithPathPrefix(apiVersion)
+
+		req, err := client.Request(ctx, method, uri, reqHeader, in)
 		require.NoError(t, err)
 		res, err := client.Do(req)
 		require.NoError(t, err)
@@ -347,6 +370,20 @@ func TestClient_SlowDownOn429(t *testing.T) {
 
 	// expect the reqPerSec to have decreased because of the 429
 	assert.Greater(t, reqPerSec, limiter.Limit())
+}
+
+func TestClient_WithHeader(t *testing.T) {
+	var (
+		client  = httputil.NewClient()
+		key     = "key"
+		a, b, c = "a", "b", "c"
+	)
+	client.AddHeader(key, a)
+	clientB := client.WithSetHeader(key, b)
+	client.SetHeader(key, c)
+	assert.Equal(t, c, client.Header().Get(key))
+	assert.Equal(t, b, clientB.Header().Get(key))
+
 }
 
 func clientWithFakeServer(t testing.TB, h func(w http.ResponseWriter, r *http.Request)) httputil.Client {

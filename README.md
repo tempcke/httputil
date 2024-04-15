@@ -3,6 +3,8 @@
 [![reportcard-img]][reportcard-url]
 
 # Client
+Think of `httputil.Client` as a base or abstract client to be wrapped inside your real clients in place of `http.Client`.  For an example see example/client.go which can also work as a boilerplate to start your own client.
+
 ## Why?
 I found myself copying large portions from previously implemented clients into new clients often, and so I figured it was time to make a package which would contain those basic features that could be used inside those future clients I will write rather than copying the code over and over again.
 
@@ -36,11 +38,14 @@ package httputil
 
 func NewClient() Client
 func (c Client) WithHost(string) Client
+func (c Client) WithPathPrefix(v string) Client
 func (c Client) WithLogger(LevelLogger) Client
 func (c Client) WithHttpClient(httpClient) Client
 func (c Client) WithRateLimiter(*RateLimiter) Client
 func (c Client) With429Retry(int) Client
 func (c Client) WithHeader(http.Header) Client
+func (c Client) WithSetHeader(k string, v ...string) Client
+func (c Client) Clone() Client
 ```
 
 ## Useful Methods

@@ -45,6 +45,12 @@ func (r *ReqHeaders) Header() http.Header {
 	}
 	return r.h
 }
+func (r *ReqHeaders) Clone() ReqHeaders {
+	return ReqHeaders{
+		ReqID: r.ReqID,
+		h:     r.h.Clone(),
+	}
+}
 
 func reqWithHeaders(req *http.Request, headerMaps ...http.Header) *http.Request {
 	for _, headers := range headerMaps {
@@ -56,9 +62,13 @@ func reqWithHeaders(req *http.Request, headerMaps ...http.Header) *http.Request 
 	}
 	return req
 }
-func uriWithBase(uri, baseURL string) string {
+func uriWithBase(uri, baseURL, pathPrefix string) string {
+	baseURL = slashJoin(baseURL, pathPrefix)
 	if baseURL != "" && !strings.HasPrefix(uri, baseURL) {
-		return strings.TrimRight(baseURL, "/") + "/" + strings.TrimLeft(uri, "/")
+		return slashJoin(baseURL, uri)
 	}
 	return uri
+}
+func slashJoin(a, b string) string {
+	return strings.TrimRight(a, "/") + "/" + strings.TrimLeft(b, "/")
 }
